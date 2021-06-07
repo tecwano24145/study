@@ -1,19 +1,45 @@
-# !/usr/bin/env python
 # -*- coding:utf-8 -*-
 import pymysql
+from pprint import pprint
+import requests
+import uuid
+import datetime
+import os
 
-conn = pymysql.connect(host='127.0.0.1',port= 3306,user = 'yanying',passwd='123456',db='bidianer',charset='UTF8')
-cur = conn.cursor(cursor=pymysql.cursors.DictCursor)
-query = 'select s.sour_id,s.name from br_bag b ' \
-        'inner join br_category c on c.cate_id=b.category ' \
-        'inner join br_bag_sour bs on bs.bag_id=b.bag_id ' \
-        'inner join br_source s on s.sour_id=bs.sour_id ' \
-        'where b.delete_flag=0 ' \
-        'and c.parent_id=2 ' \
-        'and bs.delete_flag=0 ' \
-        'and s.delete_flag=0 ' \
-        'group by bs.sour_id'
-cur.execute(query)
-for item in cur.fetchall():
-    print(item)
+now = datetime.datetime.now()
 
+db = pymysql.connect(
+    host="127.0.0.1",
+    user="yanying",
+    password="123456",
+    database="bidianer",
+    charset='utf8'
+)
+cursor = db.cursor(cursor=pymysql.cursors.DictCursor)
+i=0
+while i<1:
+    sql = 'select sour_id,sour_cover from br_crawler where sour_id>803 and is_cover=0 order by sour_id asc limit 100'
+
+    cursor.execute(sql)
+    result = cursor.fetchall()
+
+    for item in result:
+        try:
+            data = requests.get(item['sour_cover']).content
+            file_dir = now.strftime("%Y%m") + "/19"
+            file_name = str(uuid.uuid1())
+            file_path = file_dir + '/' + file_name.replace('-', '') + '.png'
+            if not os.path.exists(file_dir):
+                os.makedirs(file_dir)
+            with open(file_path, 'wb') as f:
+                f.write(data)
+                print(file_path)
+            query = "update br_crawler set cover='{}',is_cover='1' where sour_id='{}'".format(file_path, item['sour_id'])
+            cursor.execute(query)
+            db.commit()
+        except:
+            pass
+    i += 1
+
+cursor.close()
+db.close()

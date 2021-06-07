@@ -2,9 +2,14 @@
 
 import feedparser
 from pprint import pprint
-# url = 'http://www.pingwest.com/feed/'
-# url = 'http://www.ruanyifeng.com/blog/atom.xml'
-# data = feedparser.parse(url)
-#
-# for item in data.entries:
-#     print(item.has_key('img'))
+
+#url = 'http://www.pingwest.com/feed/'
+url = 'https://segmentfault.com/news/feeds'
+data = feedparser.parse(url)
+
+pprint(data.entries[0])
+
+exit()
+
+for item in data.entries:
+    pprint(item)
