@@ -1,16 +1,76 @@
-from urllib import request
-from pprint import pprint
-import json
-from pymongo import MongoClient
+# coding:utf-8
+import requests
+from lxml import html
+import os
 
-header = {
-    'Cookie':'q_c1=aeb58fa09c9e475eb1038171398a576f|1496971539000|1496971539000; r_cap_id="MWQzZjAzZWRhMTcyNDk2OGExNWEzYWI4YTFhYTBiZTM=|1497243490|1ba580ac324ffea6dd8e5ce94b6c395ea2927886"; cap_id="MGFkYmY0MmYwZDY0NDlhNDk5ZTM1MDg3Y2E3MmYxMDg=|1497243490|9c6595a99dc1224d29810fd1100a3001d1dd955c"; d_c0="ADCCdVK-5guPTvmvzBI7v_GoR9qeBitK6IY=|1497243491"; _zap=54f1f19c-e7d4-4d84-9f79-a8d1d0346f5a; _ga=GA1.2.576220217.1497243504; _xsrf=487101397db6ee56abaade9e96be5873; s-q=mysql; s-i=17; sid=458e7o4o; __utma=51854390.576220217.1497243504.1497404428.1497421636.5; __utmc=51854390; __utmz=51854390.1497421636.5.5.utmcsr=hao123.com|utmccn=(referral)|utmcmd=referral|utmcct=/link/https/; __utmv=51854390.100-1|2=registration_date=20121030=1^3=entry_date=20121030=1; z_c0=Mi4wQUFEQTk5TVpBQUFBTUlKMVVyN21DeGNBQUFCaEFsVk5kS3hsV1FDVjNfZENJSnh2bkZHeEZZSXlOcnZpNzFraGJR|1497430050|abe1ebbbf3af2ec993301ada06a148c90a74e9fa'
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36',
+    'Cookie': 'q_c1=1a46f61b9d154714ba06a401cd563834|1496500514000|1496500514000; r_cap_id="Y2VlYTQ5Y2I4MTRlNDFkYjk3MzUxM2YxNGQzYmNhNzY=|1496500514|3d59093dd5a5188ae7c6a642884d215c876ab243"; cap_id="N2YwZWU5ZWQ3ZTU2NDIzNTkxODJmNWVkMmZjZmQ3NjQ=|1496500514|82bf3b7231d87f85c2eedce2e854907871b21898"; d_c0="ABCChRes2wuPTtfyYkK9pj19S0-gFgaAtf4=|1496500515"; _zap=0e0a1694-00e3-4449-a057-9dad300ca0c9; _xsrf=9b1ce3b40326ef190a705504428ab435; s-q=python%E5%92%8Cjava; s-i=7; sid=kbktr8go; z_c0=Mi4wQUFEQTk5TVpBQUFBRUlLRkY2emJDeGNBQUFCaEFsVk5OMVphV1FCWkNQWmVYazNOa0pRem1CMHlwM2U5R3Vfempn|1497086738|bbb4c08fab3428906f6b53ef256060f5b5fb8bd2; __utma=51854390.1613515282.1496500544.1496670197.1497085840.3; __utmb=51854390.0.10.1497085840; __utmc=51854390; __utmz=51854390.1497085840.3.3.utmcsr=hao123.com|utmccn=(referral)|utmcmd=referral|utmcct=/link/https/; __utmv=51854390.100-1|2=registration_date=20121030=1^3=entry_date=20121030=1',   # 你的cookie
+    'Host': 'www.zhihu.com',
+    'Connection': 'keep-alive',
 }
-offset = 20
-url = 'https://www.zhihu.com/api/v4/questions/23289709/answers?sort_by=default&include=data%5B%2A%5D.is_normal%2Cis_collapsed%2Ccollapse_reason%2Cis_sticky%2Ccollapsed_by%2Csuggest_edit%2Ccomment_count%2Ccan_comment%2Ccontent%2Ceditable_content%2Cvoteup_count%2Creshipment_settings%2Ccomment_permission%2Cmark_infos%2Ccreated_time%2Cupdated_time%2Crelationship.is_authorized%2Cis_author%2Cvoting%2Cis_thanked%2Cis_nothelp%2Cupvoted_followees%3Bdata%5B%2A%5D.author.follower_count%2Cbadge%5B%3F%28type%3Dbest_answerer%29%5D.topics&limit=20&offset={}'.format(offset)
-request_data = request.Request(url,headers=header)
-data = request.urlopen(request_data).read()
-data = json.loads(data.decode('utf-8'))
 
-for item in data['data']:
-    pprint(item['content'])
+
+def get_link_ist(collection_num):
+    page = input('你想要多少页？(注意身体哦～):')
+    result = []
+    collection_title = None
+    for i in range(1, int(page)+1):
+        link = 'https://www.zhihu.com/collection/{}?page={}'.format(collection_num, i)
+        response = requests.get(link, headers=headers).content
+        sel = html.fromstring(response)
+        # 创建文件夹
+        if collection_title is None:
+            # 收藏夹名字
+            collection_title = sel.xpath('//h2[@class="zm-item-title zm-editable-content"]/text()')[0].strip()
+            if not collection_title:
+                continue
+            if not os.path.exists(collection_title):
+                os.mkdir(collection_title)
+        each = sel.xpath('//div[@class="zm-item"]//div[@class="zm-item-answer "]/link')
+        for e in each:
+            link = 'https://www.zhihu.com' + e.xpath('@href')[0]
+            print(link)
+            result.append(link)
+    return [collection_title, result]
+
+
+def get_pic(collection, answer_link):
+    response = requests.get(answer_link, headers=headers).content
+    #print(response)
+    sel = html.fromstring(response)
+    title = sel.xpath('//h1[@class="QuestionHeader-title"]/text()')[0].strip()
+    try:
+        # 匿名用户
+        author = sel.xpath('//a[@class="UserLink-link"]/text()')[0].strip()
+    except:
+        author = u'匿名用户'
+    # 新建路径
+    path = collection + '/' + title + ' - ' + author
+    try:
+        if not os.path.exists(path):
+            os.mkdir(path)
+        n = 1
+        for i in sel.xpath('//div[@class="RichContent-inner"]//img/@src'):
+            # 去除whitedot链接
+            if 'whitedot' not in i:
+                # print i
+                pic = requests.get(i).content
+                fname = path + '/' + str(n) + '.jpg'
+                with open(fname, 'wb') as p:
+                    p.write(pic)
+                n += 1
+        print(u'{} 已完成'.format(title))
+    except :
+        pass
+
+
+if __name__ == '__main__':
+    # https://www.zhihu.com/collection/69135664
+    # 收藏夹号码就是：69135664
+    collection_num = input('输入收藏夹号码：')
+    r = get_link_ist(collection_num)
+    collection = r[0]
+    collection_list = r[1]
+    for k in collection_list:
+        get_pic(collection, k)
